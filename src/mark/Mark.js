@@ -214,8 +214,7 @@ pv.Mark.prototype
     .property("title", String)
     .property("reverse", Boolean)
     .property("antialias", Boolean)
-    .property("events", String)
-    .property("id", String);
+    .property("events", String);
 
 /**
  * The mark type; a lower camelCase name. The type name controls rendering
@@ -276,7 +275,7 @@ pv.Mark.prototype.index = -1;
  * scale can be used to create scale-independent graphics. For example, to
  * define a dot that has a radius of 10 irrespective of any zooming, say:
  *
- * <pre>dot.shapeRadius(function() 10 / this.scale)</pre>
+ * <pre>dot.radius(function() 10 / this.scale)</pre>
  *
  * Note that the stroke width and font size are defined irrespective of scale
  * (i.e., in screen space) already. Also note that when a transform is applied
@@ -421,15 +420,6 @@ pv.Mark.prototype.scale = 1;
  */
 
 /**
- * The instance identifier, for correspondence across animated transitions. If
- * no identifier is specified, correspondence is determined using the mark
- * index. Identifiers are not global, but local to a given mark.
- *
- * @type String
- * @name pv.Mark.prototype.id
- */
-
-/**
  * Default properties for all mark types. By default, the data array is the
  * parent data as a single-element array; if the data property is not specified,
  * this causes each mark to be instantiated as a singleton with the parents
@@ -531,9 +521,6 @@ pv.Mark.prototype.anchor = function(name) {
       })
     .visible(function() {
         return this.scene.target[this.index].visible;
-      })
-    .id(function() {
-        return this.scene.target[this.index].id;
       })
     .left(function() {
         var s = this.scene.target[this.index], w = s.width || 0;
@@ -816,7 +803,7 @@ pv.Mark.stack = [];
  * do not need to be queried during build.
  */
 pv.Mark.prototype.bind = function() {
-  var seen = {}, types = [[], [], [], []], data, required = [];
+  var seen = {}, types = [[], [], [], []], data, visible;
 
   /** Scans the proto chain for the specified mark. */
   function bind(mark) {
@@ -828,7 +815,7 @@ pv.Mark.prototype.bind = function() {
           seen[p.name] = p;
           switch (p.name) {
             case "data": data = p; break;
-            case "visible": case "id": required.push(p); break;
+            case "visible": visible = p; break;
             default: types[p.type].push(p); break;
           }
         }
@@ -861,7 +848,7 @@ pv.Mark.prototype.bind = function() {
     properties: seen,
     data: data,
     defs: defs,
-    required: required,
+    required: [visible],
     optional: pv.blend(types)
   };
 };
@@ -890,7 +877,7 @@ pv.Mark.prototype.bind = function() {
  * special. The <tt>data</tt> property is evaluated first; unlike the other
  * properties, the data stack is from the parent panel, rather than the current
  * mark, since the data is not defined until the data property is evaluated.
- * The <tt>visible</tt> property is subsequently evaluated for each instance;
+ * The <tt>visisble</tt> property is subsequently evaluated for each instance;
  * only if true will the {@link #buildInstance} method be called, evaluating
  * other properties and recursively building the scene graph.
  *
@@ -1022,7 +1009,7 @@ pv.Mark.prototype.buildImplied = function(s) {
     if (l == null) {
       l = r = (width - w) / 2;
     } else {
-      r = width - w - l;
+      r = width - w - (l = l || 0);
     }
   } else if (l == null) {
     l = width - w - r;
@@ -1036,7 +1023,7 @@ pv.Mark.prototype.buildImplied = function(s) {
     if (t == null) {
       b = t = (height - h) / 2;
     } else {
-      b = height - h - t;
+      b = height - h - (t = t || 0);
     }
   } else if (t == null) {
     t = height - h - b;
@@ -1226,12 +1213,4 @@ pv.Mark.dispatch = function(type, scene, index) {
       if (m && m.render) m.render();
     });
   return true;
-};
-
-pv.Mark.prototype.transition = function() {
-  return new pv.Transition(this);
-};
-
-pv.Mark.prototype.on = function(state) {
-  return this["$" + state] = new pv.Transient(this);
 };
