@@ -34,7 +34,7 @@ pv.SvgScene.image = function(scenes) {
           "width": s.width,
           "height": s.height
         });
-      e.setAttributeNS(this.xlink, "href", s.url);
+      e.setAttributeNS(this.xlink, "xlink:href", s.url);
     }
     e = this.append(e, scenes, i);
 
