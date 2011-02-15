@@ -308,7 +308,7 @@ pv.Scale.quantitative = function() {
             break;
           }
           case 2592e6: {
-            step = 3; // seasons
+            step = (n > 24) ? 3 : ((n > 12) ? 2 : 1);
             date.setMonth(Math.floor(date.getMonth() / step) * step);
             break;
           }
