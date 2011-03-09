@@ -1,4 +1,4 @@
-// 6ceba1aea3ec63e0c521d731ace18b2f2e140823
+// 8209f9d8708a60e1977f41e4689c60f956091428
 /**
  * @class The built-in Array class.
  * @name Array
@@ -952,11 +952,12 @@ pv.Format.number = function() {
   format.parse = function(x) {
     var re = pv.Format.re;
 
-    /* Remove leading and trailing padding. Split on the decimal separator. */
-    var s = String(x)
-        .replace(new RegExp("^(" + re(padi) + ")*"), "")
-        .replace(new RegExp("(" + re(padf) + ")*$"), "")
-        .split(decimal);
+    /* Remove leading and trailing padding. Split on the decimal separator, if exists. */
+    var s = String(x).split(decimal);
+    if(s.length == 1)
+      s[1]="";
+    s[0].replace(new RegExp("^(" + re(padi) + ")*"), "");
+    s[1].replace(new RegExp("(" + re(padf) + ")*$"), "")
 
     /* Remove grouping and truncate the integral part. */
     var i = s[0].replace(new RegExp(re(group), "g"), "");
@@ -3263,27 +3264,27 @@ pv.Scale.quantitative = function() {
         precision = 31536e6;
         format = "%Y";
         /** @ignore */ increment = function(d) { d.setFullYear(d.getFullYear() + step); };
-      } else if (span >= 3 * 2592e6) {
+      } else if (span >= 5 * 2592e6) {
         precision = 2592e6;
         format = "%m/%Y";
         /** @ignore */ increment = function(d) { d.setMonth(d.getMonth() + step); };
-      } else if (span >= 3 * 6048e5) {
+      } else if (span >= 5 * 6048e5) {
         precision = 6048e5;
         format = "%m/%d";
         /** @ignore */ increment = function(d) { d.setDate(d.getDate() + 7 * step); };
-      } else if (span >= 3 * 864e5) {
+      } else if (span >= 5 * 864e5) {
         precision = 864e5;
         format = "%m/%d";
         /** @ignore */ increment = function(d) { d.setDate(d.getDate() + step); };
-      } else if (span >= 3 * 36e5) {
+      } else if (span >= 5 * 36e5) {
         precision = 36e5;
         format = "%I:%M %p";
         /** @ignore */ increment = function(d) { d.setHours(d.getHours() + step); };
-      } else if (span >= 3 * 6e4) {
+      } else if (span >= 5 * 6e4) {
         precision = 6e4;
         format = "%I:%M %p";
         /** @ignore */ increment = function(d) { d.setMinutes(d.getMinutes() + step); };
-      } else if (span >= 3 * 1e3) {
+      } else if (span >= 5 * 1e3) {
         precision = 1e3;
         format = "%I:%M:%S";
         /** @ignore */ increment = function(d) { d.setSeconds(d.getSeconds() + step); };
@@ -3307,7 +3308,7 @@ pv.Scale.quantitative = function() {
             break;
           }
           case 2592e6: {
-            step = 3; // seasons
+            step = (n > 24) ? 3 : ((n > 12) ? 2 : 1);
             date.setMonth(Math.floor(date.getMonth() / step) * step);
             break;
           }
@@ -5819,7 +5820,7 @@ pv.SvgScene.dot = function(scenes) {
     };
     if (path) {
       svg.transform = "translate(" + s.left + "," + s.top + ")";
-      if (s.angle) svg.transform += " rotate(" + 180 * s.shapeAngle / Math.PI + ")";
+      if (s.shapeAngle) svg.transform += " rotate(" + 180 * s.shapeAngle / Math.PI + ")";
       svg.d = path;
       e = this.expect(e, "path", svg);
     } else {
@@ -5868,7 +5869,7 @@ pv.SvgScene.image = function(scenes) {
           "width": s.width,
           "height": s.height
         });
-      e.setAttributeNS(this.xlink, "href", s.url);
+      e.setAttributeNS(this.xlink, "xlink:href", s.url);
     }
     e = this.append(e, scenes, i);
 
@@ -11236,7 +11237,6 @@ pv.Layout.Network.prototype = pv.extend(pv.Layout)
         return v.map(function(d, i) {
             if (typeof d != "object") d = {nodeValue: d};
             d.index = i;
-            d.linkDegree = 0;
             return d;
           });
       })
@@ -11273,6 +11273,9 @@ pv.Layout.Network.prototype.buildImplied = function(s) {
   pv.Layout.prototype.buildImplied.call(this, s);
   if (s.$id >= this.$id) return true;
   s.$id = this.$id;
+  s.nodes.forEach(function(d) {
+      d.linkDegree = 0;
+    });
   s.links.forEach(function(d) {
       var v = d.linkValue;
       (d.sourceNode || (d.sourceNode = s.nodes[d.source])).linkDegree += v;
