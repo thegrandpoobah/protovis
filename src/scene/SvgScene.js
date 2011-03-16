@@ -109,10 +109,15 @@ pv.SvgScene.expect = function(e, type, attributes, style) {
     var value = style[name];
     if (value == this.implicit.css[name]) value = null;
     if (value == null) {
-        if (pv.renderer() != 'svgweb') // svgweb doesn't support removeproperty TODO SVGWEB
-            e.style.removeProperty(name);
+      if (pv.renderer() === "batik") {
+        e.removeAttribute(name);
+      } else if (pv.renderer() != 'svgweb') // svgweb doesn't support removeproperty TODO SVGWEB
+        e.style.removeProperty(name);
     }
-    else e.style[name] = value;
+    else if (pv.renderer() == "batik")
+      e.style.setProperty(name,value);
+    else
+      e.style[name] = value;
   }
   return e;
 };

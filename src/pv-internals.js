@@ -180,7 +180,8 @@ pv.listenForPageLoad = function(listener) {
  * 'svgweb' is if we identify svgweb is there.
  */
 pv.renderer = function() {
-    return (typeof window.svgweb === "undefined") ? "nativesvg" : "svgweb";
+    return (typeof document.svgImplementation !== "undefined") ? document.svgImplementation:
+     (typeof window.svgweb === "undefined") ? "nativesvg" : "svgweb";
 }
 
 /** @private Returns a locally-unique positive id. */

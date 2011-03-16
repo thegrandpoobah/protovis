@@ -1,4 +1,4 @@
-// 6ceba1aea3ec63e0c521d731ace18b2f2e140823
+// ce027619ab4ce027dbba424fd7e946bcb85f0a3d
 /**
  * @class The built-in Array class.
  * @name Array
@@ -388,7 +388,8 @@ pv.listenForPageLoad = function(listener) {
  * 'svgweb' is if we identify svgweb is there.
  */
 pv.renderer = function() {
-    return (typeof window.svgweb === "undefined") ? "nativesvg" : "svgweb";
+    return (typeof document.svgImplementation !== "undefined") ? document.svgImplementation:
+     (typeof window.svgweb === "undefined") ? "nativesvg" : "svgweb";
 }
 
 /** @private Returns a locally-unique positive id. */
@@ -403,30 +404,32 @@ pv.functor = function(v) {
 /*
  * Parses the Protovis specifications on load, allowing the use of JavaScript
  * 1.8 function expressions on browsers that only support JavaScript 1.6.
- *
+ * This should only happen for browser environments, so we exclude batik.
  * @see pv.parse
  */
-pv.listen(window, "load", function() {
-   /*
-    * Note: in Firefox any variables declared here are visible to the eval'd
-    * script below. Even worse, any global variables declared by the script
-    * could overwrite local variables here (such as the index, `i`)!  To protect
-    * against this, all variables are explicitly scoped on a pv.$ object.
-    */
-   pv.$ = {i:0, x:document.getElementsByTagName("script")};
-    pv.$.xlen = pv.$.x.length;
-    for (; pv.$.i < pv.$.xlen; pv.$.i++) {
-      pv.$.s = pv.$.x[pv.$.i];
-      if (pv.$.s.type == "text/javascript+protovis") {
-        try {
-          window.eval(pv.parse(pv.$.s.text));
-        } catch (e) {
-          pv.error(e);
+if (pv.renderer() !== "batik") {
+  pv.listen(window, "load", function() {
+     /*
+      * Note: in Firefox any variables declared here are visible to the eval'd
+      * script below. Even worse, any global variables declared by the script
+      * could overwrite local variables here (such as the index, `i`)!  To protect
+      * against this, all variables are explicitly scoped on a pv.$ object.
+      */
+     pv.$ = {i:0, x:document.getElementsByTagName("script")};
+      pv.$.xlen = pv.$.x.length;
+      for (; pv.$.i < pv.$.xlen; pv.$.i++) {
+        pv.$.s = pv.$.x[pv.$.i];
+        if (pv.$.s.type == "text/javascript+protovis") {
+          try {
+            window.eval(pv.parse(pv.$.s.text));
+          } catch (e) {
+            pv.error(e);
+          }
         }
       }
-    }
-    delete pv.$;
-  });
+      delete pv.$;
+    });
+}
 /**
  * Abstract; see an implementing class.
  *
@@ -952,11 +955,12 @@ pv.Format.number = function() {
   format.parse = function(x) {
     var re = pv.Format.re;
 
-    /* Remove leading and trailing padding. Split on the decimal separator. */
-    var s = String(x)
-        .replace(new RegExp("^(" + re(padi) + ")*"), "")
-        .replace(new RegExp("(" + re(padf) + ")*$"), "")
-        .split(decimal);
+    /* Remove leading and trailing padding. Split on the decimal separator, if exists. */
+    var s = String(x).split(decimal);
+    if(s.length == 1)
+      s[1]="";
+    s[0].replace(new RegExp("^(" + re(padi) + ")*"), "");
+    s[1].replace(new RegExp("(" + re(padf) + ")*$"), "")
 
     /* Remove grouping and truncate the integral part. */
     var i = s[0].replace(new RegExp(re(group), "g"), "");
@@ -5116,10 +5120,15 @@ pv.SvgScene.expect = function(e, type, attributes, style) {
     var value = style[name];
     if (value == this.implicit.css[name]) value = null;
     if (value == null) {
-        if (pv.renderer() != 'svgweb') // svgweb doesn't support removeproperty TODO SVGWEB
-            e.style.removeProperty(name);
+      if (pv.renderer() === "batik") {
+        e.removeAttribute(name);
+      } else if (pv.renderer() != 'svgweb') // svgweb doesn't support removeproperty TODO SVGWEB
+        e.style.removeProperty(name);
     }
-    else e.style[name] = value;
+    else if (pv.renderer() == "batik")
+      e.style.setProperty(name,value);
+    else
+      e.style[name] = value;
   }
   return e;
 };
@@ -5819,7 +5828,7 @@ pv.SvgScene.dot = function(scenes) {
     };
     if (path) {
       svg.transform = "translate(" + s.left + "," + s.top + ")";
-      if (s.angle) svg.transform += " rotate(" + 180 * s.shapeAngle / Math.PI + ")";
+      if (s.shapeAngle) svg.transform += " rotate(" + 180 * s.shapeAngle / Math.PI + ")";
       svg.d = path;
       e = this.expect(e, "path", svg);
     } else {
@@ -5868,7 +5877,7 @@ pv.SvgScene.image = function(scenes) {
           "width": s.width,
           "height": s.height
         });
-      e.setAttributeNS(this.xlink, "href", s.url);
+      e.setAttributeNS(this.xlink, "xlink:href", s.url);
     }
     e = this.append(e, scenes, i);
 
@@ -6111,13 +6120,15 @@ pv.SvgScene.panel = function(scenes) {
 
     /* svg */
     if (!scenes.parent) {
-      s.canvas.style.display = "inline-block";
+      if(pv.renderer() !== "batik") {
+        s.canvas.style.display = "inline-block";
+      }
       if (g && (g.parentNode != s.canvas)) {
         g = s.canvas.firstChild;
         e = g && g.firstChild;
       }
       if (!g) {
-        g = this.create("svg");
+        g = this.create(pv.renderer() !== "batik"? "svg":"g");
         g.setAttribute("font-size", "10px");
         g.setAttribute("font-family", "sans-serif");
         g.setAttribute("fill", "none");
@@ -9017,7 +9028,16 @@ pv.Panel.prototype.buildInstance = function(s) {
 pv.Panel.prototype.buildImplied = function(s) {
   if (!this.parent) {
     var c = s.canvas;
-    if (c) {
+    if (pv.renderer() === "batik") {
+      if (c) {
+        if (c.$panel != this) {
+          c.$panel = this;
+          while (c.lastChild) c.removeChild(c.lastChild);
+        }
+      } else {
+        c = document.lastChild;
+      }
+    } else if (c) {
       /* Clear the container if it's not associated with this panel. */
       if (c.$panel != this) {
         c.$panel = this;
@@ -11236,7 +11256,6 @@ pv.Layout.Network.prototype = pv.extend(pv.Layout)
         return v.map(function(d, i) {
             if (typeof d != "object") d = {nodeValue: d};
             d.index = i;
-            d.linkDegree = 0;
             return d;
           });
       })
@@ -11273,6 +11292,9 @@ pv.Layout.Network.prototype.buildImplied = function(s) {
   pv.Layout.prototype.buildImplied.call(this, s);
   if (s.$id >= this.$id) return true;
   s.$id = this.$id;
+  s.nodes.forEach(function(d) {
+      d.linkDegree = 0;
+    });
   s.links.forEach(function(d) {
       var v = d.linkValue;
       (d.sourceNode || (d.sourceNode = s.nodes[d.source])).linkDegree += v;

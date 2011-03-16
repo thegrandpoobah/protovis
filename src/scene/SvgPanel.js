@@ -9,13 +9,15 @@ pv.SvgScene.panel = function(scenes) {
 
     /* svg */
     if (!scenes.parent) {
-      s.canvas.style.display = "inline-block";
+      if(pv.renderer() !== "batik") {
+        s.canvas.style.display = "inline-block";
+      }
       if (g && (g.parentNode != s.canvas)) {
         g = s.canvas.firstChild;
         e = g && g.firstChild;
       }
       if (!g) {
-        g = this.create("svg");
+        g = this.create(pv.renderer() !== "batik"? "svg":"g");
         g.setAttribute("font-size", "10px");
         g.setAttribute("font-family", "sans-serif");
         g.setAttribute("fill", "none");

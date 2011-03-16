@@ -235,7 +235,16 @@ pv.Panel.prototype.buildInstance = function(s) {
 pv.Panel.prototype.buildImplied = function(s) {
   if (!this.parent) {
     var c = s.canvas;
-    if (c) {
+    if (pv.renderer() === "batik") {
+      if (c) {
+        if (c.$panel != this) {
+          c.$panel = this;
+          while (c.lastChild) c.removeChild(c.lastChild);
+        }
+      } else {
+        c = document.lastChild;
+      }
+    } else if (c) {
       /* Clear the container if it's not associated with this panel. */
       if (c.$panel != this) {
         c.$panel = this;
