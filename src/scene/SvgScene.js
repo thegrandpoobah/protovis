@@ -146,8 +146,6 @@ pv.SvgScene.title = function(e, s) {
   if (s.title) {
     if (!a) {
       a = this.create("a");
-      // for FF>=4 when showing non-title element tooltips
-      a.setAttributeNS(this.xlink, "xlink:href", "");
       if (e.parentNode) e.parentNode.replaceChild(a, e);
       a.appendChild(e);
     }
